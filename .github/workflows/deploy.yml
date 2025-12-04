@@ -1,0 +1,40 @@
+name: Deploy Admin React Vite to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Vite project
+        run: npm run build
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            echo "→ Moviendo nuevo build a /var/www/admin/dist"
+            sudo mkdir -p /var/www/admin/dist
+            sudo rm -rf /var/www/admin/dist/*
+            sudo cp -r $GITHUB_WORKSPACE/dist/* /var/www/admin/dist/
+            sudo chown -R www-data:www-data /var/www/admin
+            sudo systemctl reload nginx
